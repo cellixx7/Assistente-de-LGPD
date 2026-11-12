@@ -1,130 +1,168 @@
 # guarda.py
-"""Guarda especialista: extrai fatos da pergunta, aplica regras em ordem de cautela e guarda o rastro."""
+"""Guarda especialista (Aula 06) no domínio LGPD: sensores, regras, motor de inferência e incerteza."""
+from rede_semantica import PROPRIEDADES, REDE, chave, consultar
 from texto import tokenizar
 
-# Nota mínima de similaridade para considerar que existe documento relevante.
-LIMIAR_SIMILARIDADE = 0.15
+# Nota mínima de similaridade para o fato documento_encontrado.
+LIMIAR_BUSCA = 0.15
+# Confiança mínima para a guarda agir sozinha; abaixo disso, um humano decide.
+LIMIAR_CONFIANCA = 0.7
+# Ordem de cautela: recusar vence encaminhar_humano, que vence responder.
+PRIORIDADE = ["recusar", "encaminhar_humano", "responder"]
 
 
 def conjunto(palavras):
-    """Converte uma lista de palavras no conjunto de radicais usado nas comparações."""
-    return set(tokenizar(" ".join(palavras)))
+    """Converte uma lista de palavras no conjunto de radicais, mantendo gatilhos como "qual"."""
+    return set(tokenizar(" ".join(palavras), remover_vazias=False))
 
 
-PALAVRAS_TEMA = conjunto([
+VOCABULARIO_TEMA = conjunto([
     "lgpd", "dado", "pessoal", "privacidade", "consentimento", "titular",
-    "anpd", "encarregado", "dpo", "incidente", "vazamento", "marketing",
-    "sensível", "criança", "tratamento", "controlador", "operador",
-    "segurança", "eliminação", "sanção", "proteção", "anonimização",
-    "portabilidade",
+    "anpd", "encarregado", "dpo", "incidente", "marketing", "sensível",
+    "criança", "tratamento", "controlador", "operador", "segurança",
+    "eliminação", "sanção", "proteção", "anonimização", "portabilidade",
 ])
-PALAVRAS_INCIDENTE = conjunto([
-    "vazamento", "vazou", "vazar", "incidente", "invasão", "invadiram",
-    "invadido", "hackeado", "hacker", "ransomware", "roubaram", "ataque",
+GATILHOS_EXIBICAO = conjunto([
+    "passa", "passar", "mostra", "mostrar", "manda", "mandar", "envia",
+    "enviar", "informa", "fornece", "fornecer", "lista", "listar", "divulga",
+    "divulgar", "qual",
 ])
-PALAVRAS_OCORRENCIA = conjunto([
+GATILHOS_FRACOS = conjunto(["qual"])
+GATILHOS_INCIDENTE = conjunto([
+    "incidente", "invasão", "invadiram", "invadido", "hackeado", "hacker",
+    "ransomware", "roubaram", "ataque", "vazou", "vazar",
+])
+GATILHOS_OCORRENCIA = conjunto([
     "ontem", "hoje", "agora", "aconteceu", "ocorreu", "sofremos", "sofri",
     "tivemos", "tive", "vazou", "invadiram", "hackeado", "roubaram",
     "descobri", "descobrimos", "fomos",
 ])
-PALAVRAS_JURIDICO = conjunto([
+GATILHOS_JURIDICOS = conjunto([
     "advogado", "processar", "processado", "indenização", "indenizar",
     "demitir", "demissão", "justiça", "judicial", "liminar",
 ])
 
-# Regras em ordem de cautela: "se" lista fatos verdadeiros, "nao" lista fatos falsos.
+# Regras de produção SE condições ENTÃO conclusão; algumas concluem fatos intermediários.
 REGRAS = [
-    {"id": "R1", "nome": "pergunta vazia ou sem palavras úteis",
-     "se": ["pergunta_vazia"], "nao": [],
-     "efeito": ("decisao", "recusar"),
-     "motivo": "não há o que buscar na base"},
-    {"id": "R2", "nome": "incidente em curso",
-     "se": ["cita_incidente", "marca_ocorrencia"], "nao": [],
-     "efeito": ("fato", "incidente_em_curso"),
-     "motivo": "a pergunta cita um incidente e diz que ele aconteceu"},
-    {"id": "R3", "nome": "encaminhar incidente",
-     "se": ["incidente_em_curso"], "nao": [],
-     "efeito": ("decisao", "encaminhar"),
-     "motivo": "incidente real exige comunicação à ANPD, não resposta de FAQ",
-     "destino": "encarregado da empresa e ANPD"},
-    {"id": "R4", "nome": "aconselhamento jurídico",
-     "se": ["pede_juridico"], "nao": [],
-     "efeito": ("decisao", "encaminhar"),
-     "motivo": "caso concreto exige análise de um profissional do direito",
-     "destino": "advogado"},
-    {"id": "R5", "nome": "fora do tema LGPD",
-     "se": [], "nao": ["tema_lgpd"],
-     "efeito": ("decisao", "recusar"),
-     "motivo": "a pergunta não trata de proteção de dados"},
-    {"id": "R6", "nome": "sem documento acima do limiar",
-     "se": ["tema_lgpd"], "nao": ["documento_encontrado"],
-     "efeito": ("decisao", "recusar"),
-     "motivo": "não encontrei isso na base"},
-    {"id": "R7", "nome": "responder com a base",
-     "se": ["tema_lgpd", "documento_encontrado"], "nao": [],
-     "efeito": ("decisao", "responder"),
-     "motivo": "o tema é LGPD e há documento acima do limiar"},
+    {"nome": "R1", "se": ["menciona_dado_pessoal", "pede_exibicao"], "entao": "vazamento_de_dado"},
+    {"nome": "R2", "se": ["vazamento_de_dado"], "entao": "recusar"},
+    {"nome": "R3", "se": ["cita_incidente", "marca_ocorrencia"], "entao": "incidente_em_curso"},
+    {"nome": "R4", "se": ["incidente_em_curso"], "entao": "encaminhar_humano"},
+    {"nome": "R5", "se": ["pede_orientacao_juridica"], "entao": "encaminhar_humano"},
+    {"nome": "R6", "se": ["sem_termo_do_dominio"], "entao": "fora_do_dominio"},
+    {"nome": "R7", "se": ["fora_do_dominio"], "entao": "recusar"},
+    {"nome": "R8", "se": ["documento_encontrado"], "entao": "responder"},
 ]
 
-
-def extrair_fatos(pergunta, texto_expandido, resultados_busca):
-    """Transforma a pergunta, a rede e a busca em fatos verdadeiros ou falsos para as regras."""
-    palavras = set(tokenizar(pergunta))
-    palavras_expandidas = set(tokenizar(texto_expandido))
-    melhor_nota = resultados_busca[0][1] if resultados_busca else 0.0
-    return {
-        "pergunta_vazia": not palavras,
-        "cita_incidente": bool(palavras_expandidas & PALAVRAS_INCIDENTE),
-        "marca_ocorrencia": bool(palavras & PALAVRAS_OCORRENCIA),
-        "incidente_em_curso": False,
-        "pede_juridico": bool(palavras & PALAVRAS_JURIDICO),
-        "tema_lgpd": bool(palavras_expandidas & PALAVRAS_TEMA),
-        "documento_encontrado": melhor_nota >= LIMIAR_SIMILARIDADE,
-    }
+# Fatos que os sensores (função perceber) sabem produzir.
+FATOS_DOS_SENSORES = {
+    "menciona_dado_pessoal", "pede_exibicao", "cita_incidente", "marca_ocorrencia",
+    "pede_orientacao_juridica", "sem_termo_do_dominio", "documento_encontrado",
+}
 
 
-def regra_dispara(regra, fatos):
-    """Diz se todos os fatos de "se" são verdadeiros e todos os de "nao" são falsos."""
-    return all(fatos[f] for f in regra["se"]) and not any(fatos[f] for f in regra["nao"])
+def vocabulario(rede):
+    """Devolve o vocabulário do domínio: a lista do grupo mais os termos classificados na rede."""
+    return VOCABULARIO_TEMA | {chave(o) for o, relacao, _ in rede if relacao == "e_um"}
 
 
-def descrever_teste(regra, fatos):
-    """Mostra os fatos que a regra testou, com seus valores, para o rastro."""
-    partes = [f"{f}={fatos[f]}" for f in regra["se"]]
-    partes += [f"{f}={fatos[f]} (precisa ser False)" for f in regra["nao"]]
-    return ", ".join(partes)
+def perceber(palavras, expandidas, melhor_nota, rede=REDE):
+    """Transforma a pergunta, a expansão da rede e a nota da busca em um conjunto de fatos."""
+    fatos = set()
+    if any(consultar(p, "pode_exibir", rede, PROPRIEDADES) == "nao" for p in palavras):
+        fatos.add("menciona_dado_pessoal")
+    if palavras & GATILHOS_EXIBICAO:
+        fatos.add("pede_exibicao")
+    if expandidas & GATILHOS_INCIDENTE:
+        fatos.add("cita_incidente")
+    if palavras & GATILHOS_OCORRENCIA:
+        fatos.add("marca_ocorrencia")
+    if palavras & GATILHOS_JURIDICOS:
+        fatos.add("pede_orientacao_juridica")
+    if not expandidas & vocabulario(rede):
+        fatos.add("sem_termo_do_dominio")
+    if melhor_nota >= LIMIAR_BUSCA:
+        fatos.add("documento_encontrado")
+    return fatos
+
+
+def encadear_para_frente(fatos, regras):
+    """Dispara regras até não surgir fato novo e devolve (fatos finais, regras disparadas, ciclos)."""
+    fatos, rastro, ciclos, ciclo = set(fatos), [], [], 0
+    while True:
+        ciclo += 1
+        prontas = [r for r in regras if all(c in fatos for c in r["se"]) and r["entao"] not in fatos]
+        if not prontas:
+            ciclos.append(f"ciclo {ciclo}: nenhuma regra nova, fim")
+            return fatos, rastro, ciclos
+        regra = prontas[0]
+        fatos.add(regra["entao"])
+        rastro.append(regra["nome"])
+        ciclos.append(
+            f"ciclo {ciclo}: prontas {[r['nome'] for r in prontas]} "
+            f"-> dispara {regra['nome']} -> novo fato {regra['entao']}"
+        )
 
 
 def decidir(fatos):
-    """Percorre as regras em ordem e devolve a decisão, o motivo e o rastro de cada teste."""
-    fatos = dict(fatos)
-    rastro = []
-    for regra in REGRAS:
-        disparou = regra_dispara(regra, fatos)
-        situacao = "dispara" if disparou else "não dispara"
-        rastro.append(
-            f"{regra['id']} {regra['nome']} | {descrever_teste(regra, fatos)} | {situacao}"
-        )
-        if not disparou:
-            continue
-        tipo, valor = regra["efeito"]
-        if tipo == "fato":
-            fatos[valor] = True
-            rastro.append(f"   deduziu {valor}=True")
-            continue
-        return {
-            "decisao": valor,
-            "regra": regra["id"],
-            "motivo": regra["motivo"],
-            "destino": regra.get("destino"),
-            "rastro": rastro,
-            "fatos": fatos,
-        }
+    """Escolhe a ação mais cautelosa entre as concluídas; sem ação, um humano decide."""
+    for acao in PRIORIDADE:
+        if acao in fatos:
+            return acao
+    return "encaminhar_humano"
+
+
+def perceber_com_confianca(fatos, palavras):
+    """Dá confiança 1,0 aos fatos, ou 0,5 ao pedido de exibição que veio só de gatilho fraco."""
+    confianca = {fato: 1.0 for fato in fatos}
+    if "pede_exibicao" in confianca and not palavras & (GATILHOS_EXIBICAO - GATILHOS_FRACOS):
+        confianca["pede_exibicao"] = 0.5
+    return confianca
+
+
+def encadear_com_confianca(confianca, regras):
+    """Encadeia para frente; cada conclusão recebe a menor confiança de suas condições."""
+    confianca, mudou = dict(confianca), True
+    while mudou:
+        mudou = False
+        for r in regras:
+            if all(c in confianca for c in r["se"]) and r["entao"] not in confianca:
+                confianca[r["entao"]] = min(confianca[c] for c in r["se"])
+                mudou = True
+    return confianca
+
+
+def explicar(rastro, regras, acao):
+    """Monta a explicação da decisão a partir das regras que dispararam."""
+    linhas = []
+    for nome in rastro:
+        r = next(r for r in regras if r["nome"] == nome)
+        linhas.append(f'{nome}: como {" e ".join(r["se"])}, concluí {r["entao"]}')
+    concluidas = [r["entao"] for r in regras if r["nome"] in rastro and r["entao"] in PRIORIDADE]
+    linhas.append(f"ações concluídas: {concluidas}; pela ordem de cautela, venceu {acao}")
+    return linhas
+
+
+def julgar(fatos, palavras):
+    """Aplica o motor sem e com incerteza e devolve decisões, rastro, confiança e explicação."""
+    fatos_finais, rastro, ciclos = encadear_para_frente(fatos, REGRAS)
+    acao_sem = decidir(fatos_finais)
+    confianca = encadear_com_confianca(perceber_com_confianca(fatos, palavras), REGRAS)
+    acao_com = decidir(confianca)
+    if acao_com in confianca and confianca[acao_com] < LIMIAR_CONFIANCA:
+        acao_com = "encaminhar_humano"
     return {
-        "decisao": "recusar",
-        "regra": None,
-        "motivo": "nenhuma regra se aplicou",
-        "destino": None,
+        "fatos": sorted(fatos),
         "rastro": rastro,
-        "fatos": fatos,
+        "ciclos": ciclos,
+        "acao_sem_incerteza": acao_sem,
+        "confianca": dict(sorted(confianca.items())),
+        "acao_com_incerteza": acao_com,
+        "explicacao": explicar(rastro, REGRAS, acao_com),
     }
+
+
+def verificar_base(regras):
+    """Lista as condições que nenhum sensor e nenhuma regra produz (regras que nunca disparam)."""
+    produzidos = FATOS_DOS_SENSORES | {r["entao"] for r in regras}
+    return [(r["nome"], c) for r in regras for c in r["se"] if c not in produzidos]

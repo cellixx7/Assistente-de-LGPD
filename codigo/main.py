@@ -5,55 +5,48 @@ from pathlib import Path
 
 from assistente import tratar_pergunta
 from busca_palavras import carregar_corpus
+from casos_teste import CASOS
 
 PASTA_CORPUS = Path(__file__).resolve().parent.parent / "corpus"
 
-PERGUNTAS_DEMO = [
-    "Preciso de autorização para mandar promoção por WhatsApp?",
-    "Qual o prazo para responder o titular que pede acesso aos dados?",
-    "Pequena empresa precisa de DPO?",
-    "O que é um vazamento de dados?",
-    "Tivemos um vazamento de dados hoje, o que faço?",
-    "Posso demitir um funcionário que pediu seus dados? Preciso de advogado?",
-    "Qual a receita de bolo de cenoura?",
-    "",
-]
-
 
 def imprimir_resultado(resultado, corpus):
-    """Imprime a pergunta, a rede, a busca, o rastro das regras e a decisão."""
+    """Imprime pergunta, rede, busca, fatos, ciclos do motor, explicação e decisão."""
     print(f"\nPergunta: {resultado['pergunta']!r}")
     if resultado["acrescimos"]:
-        for termo, relacao, novo in resultado["acrescimos"]:
-            print(f"  Rede semântica: {termo} -> {novo} ({relacao})")
+        for origem, destino in resultado["acrescimos"]:
+            print(f"  Rede semântica: {origem} -> {destino} (sinonimo_de)")
     else:
-        print("  Rede semântica: nenhum termo acrescentado")
+        print("  Rede semântica: nenhum sinônimo acrescentado")
     if resultado["documentos"]:
         for id_doc, nota, comuns in resultado["documentos"]:
             print(f"  Busca: {id_doc} nota={nota:.3f} palavras={', '.join(comuns)}")
     else:
         print("  Busca: nenhum documento com palavras em comum")
-    print("  Rastro da guarda:")
-    for linha in resultado["rastro"]:
+    print("  Fatos percebidos:", resultado["fatos"])
+    for linha in resultado["ciclos"]:
+        print(f"  {linha}")
+    print("  Explicação:")
+    for linha in resultado["explicacao"]:
         print(f"    {linha}")
-    destino = f" para {resultado['destino']}" if resultado["destino"] else ""
+    print("  Confianças:", resultado["confianca"])
     print(
-        f"  Decisão: {resultado['decisao'].upper()}{destino} "
-        f"(regra {resultado['regra']}: {resultado['motivo']})"
+        f"  Decisão: {resultado['acao_com_incerteza'].upper()} "
+        f"(sem incerteza seria {resultado['acao_sem_incerteza']})"
     )
-    if resultado["decisao"] == "responder":
+    if resultado["acao_com_incerteza"] == "responder":
         id_doc = resultado["documentos"][0][0]
         print(f"  Documento que iria ao modelo: [{id_doc}] {corpus[id_doc]}")
 
 
 def principal():
-    """Roda a pergunta passada na linha de comando ou, sem argumentos, a demonstração."""
+    """Roda a pergunta passada na linha de comando ou, sem argumentos, os 10 casos e uma pergunta vazia."""
     corpus = carregar_corpus(PASTA_CORPUS)
     print(f"Corpus carregado: {len(corpus)} documentos")
     if len(sys.argv) > 1:
         perguntas = [" ".join(sys.argv[1:])]
     else:
-        perguntas = PERGUNTAS_DEMO
+        perguntas = [pergunta for pergunta, _ in CASOS] + [""]
     for pergunta in perguntas:
         imprimir_resultado(tratar_pergunta(pergunta, corpus), corpus)
 

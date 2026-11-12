@@ -9,7 +9,7 @@ PALAVRAS_VAZIAS = {
     "das", "em", "no", "na", "nos", "nas", "por", "pelo", "pela", "pelos",
     "pelas", "para", "pra", "com", "sem", "sobre", "entre", "ate", "que", "e",
     "ou", "se", "ao", "aos", "como", "qual", "quais", "quando", "onde", "quem",
-    "eu", "voce", "vc", "meu", "minha", "meus", "minhas", "nosso", "nossa",
+    "eu", "me", "voce", "vc", "meu", "minha", "meus", "minhas", "nosso", "nossa",
     "seu", "sua", "seus", "suas", "preciso", "posso", "pode", "podem", "devo",
     "deve", "ser", "sao", "foi", "tem", "ter", "ha", "mais", "muito", "isso",
     "esse", "essa", "este", "esta", "mas", "ja", "nao", "sim",
@@ -39,7 +39,9 @@ def radical(palavra):
     return palavra
 
 
-def tokenizar(texto):
-    """Divide o texto em radicais de palavras, sem acentos e sem palavras vazias."""
+def tokenizar(texto, remover_vazias=True):
+    """Divide o texto em radicais de palavras sem acentos, tirando as vazias se pedido."""
     palavras = re.findall(r"[a-z0-9]+", normalizar(texto))
-    return [radical(p) for p in palavras if p not in PALAVRAS_VAZIAS and len(p) > 1]
+    if remover_vazias:
+        palavras = [p for p in palavras if p not in PALAVRAS_VAZIAS]
+    return [radical(p) for p in palavras if len(p) > 1]
