@@ -1,0 +1,1 @@
+Todo tratamento de dados deve seguir os princípios do art. 6º: finalidade, adequação, necessidade, livre acesso, qualidade dos dados, transparência, segurança, prevenção, não discriminação e responsabilização e prestação de contas. Na prática, a empresa só deve coletar o necessário e usar os dados para o que informou.

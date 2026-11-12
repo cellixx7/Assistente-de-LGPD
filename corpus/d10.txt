@@ -1,0 +1,1 @@
+Controlador é quem toma as decisões sobre o tratamento dos dados pessoais, e operador é quem trata os dados em nome do controlador. Uma loja que decide coletar o telefone do cliente é controladora, e o serviço de envio de mensagens que ela contrata costuma ser operador.

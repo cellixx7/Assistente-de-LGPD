@@ -1,0 +1,1 @@
+Quem trata dados pessoais deve adotar medidas de segurança, técnicas e administrativas, capazes de proteger os dados contra acessos não autorizados e contra situações acidentais ou ilícitas de destruição, perda, alteração, comunicação ou difusão. Exemplos são controle de acesso, senhas fortes e cópias de segurança.

@@ -1,0 +1,1 @@
+Dado anonimizado é aquele que não permite identificar o titular, considerados os meios técnicos razoáveis disponíveis no momento do tratamento, e por isso não é tratado como dado pessoal. Se o processo de anonimização puder ser revertido com esforços razoáveis, os dados voltam a ser pessoais.

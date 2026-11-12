@@ -1,0 +1,1 @@
+O controlador deve indicar um encarregado pelo tratamento de dados pessoais, também chamado de DPO. O encarregado é o canal de comunicação entre a empresa, os titulares e a ANPD, e sua identidade e contato devem ser divulgados publicamente, de preferência no site da empresa.

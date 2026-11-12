@@ -1,0 +1,1 @@
+Controlador e operador devem manter registro das operações de tratamento de dados pessoais que realizam, especialmente quando a base legal é o legítimo interesse. Esse registro deve descrever quais dados são tratados, para que finalidade e com quem são compartilhados.

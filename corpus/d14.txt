@@ -1,0 +1,1 @@
+Ao descobrir um vazamento de dados, a empresa deve registrar o incidente, avaliar o risco para os titulares e comunicar a ANPD e os titulares no prazo. Se não tiver todas as informações na primeira comunicação, pode complementá-la em até 20 dias úteis, e o registro do incidente deve ser guardado por pelo menos cinco anos.

@@ -1,0 +1,1 @@
+O controlador deve comunicar à ANPD e ao titular a ocorrência de incidente de segurança que possa acarretar risco ou dano relevante. Pela Resolução CD/ANPD nº 15/2024, o prazo é de três dias úteis, contados do conhecimento de que o incidente afetou dados pessoais, e agentes de pequeno porte têm o prazo em dobro.
