@@ -42,8 +42,9 @@ def pai(no, rede):
 
 def consultar(no, propriedade, rede, propriedades, mostrar=False):
     """Procura a propriedade no nó e, se não achar, sobe pela relação e_um."""
-    caminho, atual = [], no
-    while atual is not None:
+    caminho, atual, visitados = [], no, set()
+    while atual is not None and chave(atual) not in visitados:
+        visitados.add(chave(atual))
         caminho.append(atual)
         if propriedade in propriedades.get(atual, {}):
             if mostrar:
@@ -51,7 +52,7 @@ def consultar(no, propriedade, rede, propriedades, mostrar=False):
             return propriedades[atual][propriedade]
         atual = pai(atual, rede)
     if mostrar:
-        print("  caminho:", " -> ".join(caminho), "(fim da rede)")
+        print("  caminho:", " -> ".join(caminho), "(fim da rede ou ciclo)")
     return None
 
 

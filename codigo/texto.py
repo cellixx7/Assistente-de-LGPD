@@ -41,7 +41,7 @@ def radical(palavra):
 
 def tokenizar(texto, remover_vazias=True):
     """Divide o texto em radicais de palavras sem acentos, tirando as vazias se pedido."""
-    palavras = re.findall(r"[a-z0-9]+", normalizar(texto))
+    palavras = re.findall(r"[a-z0-9]+", re.sub(r"(?<=\w)-(?=\w)", "", normalizar(texto)))
     if remover_vazias:
         palavras = [p for p in palavras if p not in PALAVRAS_VAZIAS]
     return [radical(p) for p in palavras if len(p) > 1]

@@ -19,10 +19,10 @@ def imprimir_resultado(resultado, corpus):
     else:
         print("  Rede semântica: nenhum sinônimo acrescentado")
     if resultado["documentos"]:
-        for id_doc, nota, comuns in resultado["documentos"]:
-            print(f"  Busca: {id_doc} nota={nota:.3f} palavras={', '.join(comuns)}")
+        for id_doc, nota in resultado["documentos"]:
+            print(f"  Busca: {id_doc} nota={nota:.3f}")
     else:
-        print("  Busca: nenhum documento com palavras em comum")
+        print("  Busca: nenhum documento encontrado")
     print("  Fatos percebidos:", resultado["fatos"])
     for linha in resultado["ciclos"]:
         print(f"  {linha}")
