@@ -23,13 +23,10 @@ def faixa_do_limiar(notas_com_resposta, notas_sem_resposta):
     return teto, piso, (teto + piso) / 2
 
 
-def principal():
-    corpus = carregar_corpus(RAIZ / "corpus")
-    linhas = ler_csv(RAIZ / "perguntas_avaliacao.csv")
+def acerto_tres(linhas, buscas, rotulo):
+    """Imprime o acerto@3 de cada busca nas linhas que têm documento_correto."""
     com_gabarito = [l for l in linhas if l["documento_correto"]]
-    buscas = {"TF-IDF": BuscaTfidf(corpus), "Embeddings": BuscaEmbeddings(corpus)}
-
-    print(f"Acerto@3 em {len(com_gabarito)} perguntas com documento correto (cosseno, top 3)\n")
+    print(f"Acerto@3 em {len(com_gabarito)} {rotulo} (cosseno, top 3)\n")
     print(f"{'Pergunta':58} {'Correto':8} {'TF-IDF top 3':22} {'Embeddings top 3':22}")
     acertos = {nome: 0 for nome in buscas}
     for l in com_gabarito:
@@ -43,6 +40,14 @@ def principal():
     print(f"\n{'Busca':12} {'Acerto@3':>9}")
     for nome, n in acertos.items():
         print(f"{nome:12} {n}/{len(com_gabarito)} = {n / len(com_gabarito):.2f}")
+
+
+def principal():
+    corpus = carregar_corpus(RAIZ / "corpus")
+    linhas = ler_csv(RAIZ / "perguntas_avaliacao.csv")
+    buscas = {"TF-IDF": BuscaTfidf(corpus), "Embeddings": BuscaEmbeddings(corpus)}
+
+    acerto_tres(linhas, buscas, "perguntas com documento correto")
 
     # Calibração: a guarda vê a melhor nota dos embeddings sobre a pergunta já expandida pela rede.
     fora_dominio = ler_csv(RAIZ / "perguntas_fora_dominio.csv")  # só para calibrar; não entra no acerto@3 nem nas 15
@@ -64,6 +69,11 @@ def principal():
         acima = sum(n > LIMIAR_BUSCA for n in sem_resposta)
         print(f"  sem folga: as faixas se sobrepõem; com o limiar atual, {acima} de {len(sem_resposta)} perguntas fora do domínio "
               f"ainda acham documento, e só a regra R7 (recusar vence responder) as barra")
+
+    # Perguntas novas do grupo: tabela separada, fora da calibração e das 15 originais.
+    novas = ler_csv(RAIZ / "perguntas_novas.csv")
+    print("\n" + "-" * 78 + "\nPerguntas novas (perguntas_novas.csv)\n" + "-" * 78)
+    acerto_tres(novas, buscas, "perguntas novas com documento correto")
 
 
 if __name__ == "__main__":

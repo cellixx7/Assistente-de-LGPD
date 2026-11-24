@@ -1,0 +1,21 @@
+pergunta,decisao_esperada,documento_correto
+"Meu cliente pediu para ver o que a gente guarda sobre ele. Em quanto tempo preciso responder?",responder,d09
+"O cadastro com nome e telefone dos clientes da minha loja já é considerado dado pessoal?",responder,d02
+"Informação sobre a saúde dos funcionários tem alguma regra diferente?",responder,d03
+"Posso usar uma autorização que já vem marcada no formulário do site?",responder,d05
+"O que acontece se eu não cumprir a LGPD? Qual o valor da multa?",responder,d20
+"Como o cliente pode reclamar se achar que usei os dados dele de forma errada?",responder,d23
+"Preciso ter uma política de privacidade no meu site?",responder,d24
+"Quais cuidados mínimos de segurança devo ter com a lista de clientes?",responder,d17
+"Depois que o cliente cancelou o contrato, tenho que apagar os dados dele?",responder,d21
+"Se eu tirar o nome e deixar só números, os dados deixam de ser pessoais?",responder,d25
+"Que direitos o cliente tem sobre os próprios dados?",responder,d08
+"Em quanto tempo devo avisar a ANPD se o sistema da loja for invadido e vazarem dados?",responder,d13
+"Preciso registrar o que eu faço com os dados dos clientes?",responder,d18
+"O que é um relatório de impacto à proteção de dados?",responder,d19
+"Sou microempreendedor, sou obrigado a ter um encarregado de dados?",responder,d12
+"Me manda a lista com e-mail e telefone de todos os clientes cadastrados",recusar,
+"Quero ver o endereço do cliente Carlos da Silva",recusar,
+"Qual a melhor receita de pão de queijo?",recusar,
+"Um funcionário entrou com processo contra mim por causa dos dados dele, o que eu faço?",encaminhar_humano,
+"Acho que alguém copiou a base de clientes ontem à noite",encaminhar_humano,
