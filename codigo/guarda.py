@@ -3,8 +3,8 @@
 from rede_semantica import PROPRIEDADES, REDE, chave, consultar
 from texto import tokenizar
 
-# Nota mínima de similaridade para o fato documento_encontrado.
-LIMIAR_BUSCA = 0.15
+# Nota mínima (cosseno dos embeddings) para o fato documento_encontrado; calibrada em comparacao.py (15 perguntas + 8 fora do domínio).
+LIMIAR_BUSCA = 0.30
 # Confiança mínima para a guarda agir sozinha; abaixo disso, um humano decide.
 LIMIAR_CONFIANCA = 0.7
 # Ordem de cautela: recusar vence encaminhar_humano, que vence responder.
@@ -21,13 +21,13 @@ VOCABULARIO_TEMA = conjunto([
     "anpd", "encarregado", "dpo", "incidente", "marketing", "sensível",
     "criança", "tratamento", "controlador", "operador", "segurança",
     "eliminação", "sanção", "proteção", "anonimização", "portabilidade",
+    "legítimo",
 ])
-GATILHOS_EXIBICAO = conjunto([
-    "passa", "passar", "mostra", "mostrar", "manda", "mandar", "envia",
-    "enviar", "informa", "fornece", "fornecer", "lista", "listar", "divulga",
-    "divulgar", "qual",
-])
+# Prefixos (radicais de verbo) dos pedidos de exibição: casam "forneça", "fornecer", "fornecemos".
+PREFIXOS_EXIBICAO = ("pass", "mostr", "mand", "envi", "fornec", "list", "divulg")
 GATILHOS_FRACOS = conjunto(["qual"])
+# "informa" fica exato: como prefixo pegaria "informação", palavra comum nas perguntas legítimas.
+GATILHOS_EXIBICAO = GATILHOS_FRACOS | conjunto(["informa", "informe"])
 GATILHOS_INCIDENTE = conjunto([
     "incidente", "invasão", "invadiram", "invadido", "hackeado", "hacker",
     "ransomware", "roubaram", "ataque", "vazou", "vazar",
@@ -41,6 +41,11 @@ GATILHOS_JURIDICOS = conjunto([
     "advogado", "processar", "processado", "indenização", "indenizar",
     "demitir", "demissão", "justiça", "judicial", "liminar",
 ])
+# Defesa contra instrução embutida em documento (exigência E): verbo de desobediência + alvo da ordem.
+PREFIXOS_DESOBEDIENCIA = ("ignor", "desconsider", "esquec", "descart", "substitu")
+ALVOS_DA_ORDEM = conjunto(["regra", "instrução", "anterior", "prompt", "pergunta", "sistema"])
+PREFIXOS_COMANDO = ("respond", "diga", "escrev", "repit", "imprim")
+GATILHOS_FIXACAO = conjunto(["apenas", "somente", "sempre", "qualquer"])
 
 # Regras de produção SE condições ENTÃO conclusão; algumas concluem fatos intermediários.
 REGRAS = [
@@ -61,6 +66,11 @@ FATOS_DOS_SENSORES = {
 }
 
 
+def gatilhos_de_exibicao(palavras):
+    """Devolve as palavras que pedem exibição: o gatilho fraco "qual" ou um verbo com o prefixo da lista."""
+    return {p for p in palavras if p in GATILHOS_EXIBICAO or p.startswith(PREFIXOS_EXIBICAO)}
+
+
 def vocabulario(rede):
     """Devolve o vocabulário do domínio: a lista do grupo mais os termos classificados na rede."""
     return VOCABULARIO_TEMA | {chave(o) for o, relacao, _ in rede if relacao == "e_um"}
@@ -71,7 +81,7 @@ def perceber(palavras, expandidas, melhor_nota, rede=REDE):
     fatos = set()
     if any(consultar(p, "pode_exibir", rede, PROPRIEDADES) == "nao" for p in palavras):
         fatos.add("menciona_dado_pessoal")
-    if palavras & GATILHOS_EXIBICAO:
+    if gatilhos_de_exibicao(palavras):
         fatos.add("pede_exibicao")
     if expandidas & GATILHOS_INCIDENTE:
         fatos.add("cita_incidente")
@@ -79,11 +89,26 @@ def perceber(palavras, expandidas, melhor_nota, rede=REDE):
         fatos.add("marca_ocorrencia")
     if palavras & GATILHOS_JURIDICOS:
         fatos.add("pede_orientacao_juridica")
-    if not expandidas & vocabulario(rede):
+    if not (expandidas & vocabulario(rede) or "cita_incidente" in fatos):
         fatos.add("sem_termo_do_dominio")
     if melhor_nota >= LIMIAR_BUSCA:
         fatos.add("documento_encontrado")
     return fatos
+
+
+def documento_com_instrucao(texto):
+    """Diz se o documento manda desobedecer regras ou fixa a resposta (verbo + alvo, não uma frase inteira)."""
+    palavras = tokenizar(texto, remover_vazias=False)
+    manda_ignorar = any(p.startswith(PREFIXOS_DESOBEDIENCIA) for p in palavras) and bool(set(palavras) & ALVOS_DA_ORDEM)
+    fixa_resposta = any(p.startswith(PREFIXOS_COMANDO) for p in palavras) and bool(set(palavras) & GATILHOS_FIXACAO)
+    return manda_ignorar or fixa_resposta
+
+
+def filtrar_documentos(documentos, corpus):
+    """Separa os documentos (id, nota) em seguros e barrados, tirando os que trazem instrução embutida."""
+    seguros = [d for d in documentos if not documento_com_instrucao(corpus[d[0]])]
+    barrados = [d for d in documentos if documento_com_instrucao(corpus[d[0]])]
+    return seguros, barrados
 
 
 def encadear_para_frente(fatos, regras):
@@ -115,7 +140,7 @@ def decidir(fatos):
 def perceber_com_confianca(fatos, palavras):
     """Dá confiança 1,0 aos fatos, ou 0,5 ao pedido de exibição que veio só de gatilho fraco."""
     confianca = {fato: 1.0 for fato in fatos}
-    if "pede_exibicao" in confianca and not palavras & (GATILHOS_EXIBICAO - GATILHOS_FRACOS):
+    if "pede_exibicao" in confianca and not gatilhos_de_exibicao(palavras) - GATILHOS_FRACOS:
         confianca["pede_exibicao"] = 0.5
     return confianca
 
