@@ -11,6 +11,7 @@ URL_OLLAMA = "http://localhost:11434/api/generate"
 # Um modelo menor e um maior, os dois com o mesmo prompt (requisito 4).
 MODELOS = ["qwen2.5:1.5b", "llama3.2:3b"]
 TIMEOUT_PADRAO = 120  # segundos por chamada
+RODADAS = 3  # repetições da medição de tempo por modelo
 TIMEOUT_AQUECIMENTO = 300  # a primeira chamada carrega o modelo na memória
 
 INSTRUCAO = (
@@ -84,23 +85,33 @@ def responder(modelo, pergunta, documentos, com_defesa=False, timeout=TIMEOUT_PA
     return chamar_ollama(modelo, montar_prompt(pergunta, documentos, com_defesa), timeout, url)
 
 
-def tempo_medio(modelo, perguntas_e_documentos, timeout=TIMEOUT_PADRAO, url=URL_OLLAMA):
-    """Mede o tempo médio das respostas bem-sucedidas, após uma chamada de aquecimento não contada."""
+def estatisticas(tempos):
+    """Devolve (média, mínimo, máximo) de uma lista de tempos, ou None se vazia."""
+    return (sum(tempos) / len(tempos), min(tempos), max(tempos)) if tempos else None
+
+
+def tempo_medio(modelo, perguntas_e_documentos, timeout=TIMEOUT_PADRAO, url=URL_OLLAMA, rodadas=1):
+    """Mede o tempo das respostas bem-sucedidas em `rodadas` rodadas, após um aquecimento não contado."""
     if not perguntas_e_documentos:
-        return {"modelo": modelo, "media": None, "ok": 0, "erros": []}
+        return {"modelo": modelo, "media": None, "ok": 0, "erros": [], "rodadas": []}
     pergunta, documentos = perguntas_e_documentos[0]
     aquecimento = responder(modelo, pergunta, documentos, timeout=TIMEOUT_AQUECIMENTO, url=url)
     if aquecimento["erro"]:
-        return {"modelo": modelo, "media": None, "ok": 0, "erros": [aquecimento["erro"]]}
-    tempos, erros = [], []
-    for pergunta, documentos in perguntas_e_documentos:
-        r = responder(modelo, pergunta, documentos, timeout=timeout, url=url)
-        if r["erro"]:
-            erros.append(f"{pergunta!r}: {r['erro']}")
-        else:
-            tempos.append(r["segundos"])
-    media = sum(tempos) / len(tempos) if tempos else None
-    return {"modelo": modelo, "media": media, "ok": len(tempos), "erros": erros}
+        return {"modelo": modelo, "media": None, "ok": 0, "erros": [aquecimento["erro"]], "rodadas": []}
+    por_rodada, todos, erros = [], [], []
+    for _ in range(rodadas):
+        tempos = []
+        for pergunta, documentos in perguntas_e_documentos:
+            r = responder(modelo, pergunta, documentos, timeout=timeout, url=url)
+            if r["erro"]:
+                erros.append(f"{pergunta!r}: {r['erro']}")
+            else:
+                tempos.append(r["segundos"])
+        por_rodada.append(tempos)
+        todos += tempos
+    est = estatisticas(todos)
+    return {"modelo": modelo, "media": est[0] if est else None, "ok": len(todos), "erros": erros,
+            "rodadas": por_rodada, "todos": todos}
 
 
 def principal():
@@ -122,12 +133,17 @@ def principal():
     print(f"{len(lote)} perguntas liberadas pela guarda, de {len(perguntas)}")
     print("Pergunta vazia:", responder(MODELOS[0], "", []))
     for modelo in MODELOS:
-        medida = tempo_medio(modelo, lote)
-        media = "sem medida" if medida["media"] is None else f"{medida['media']:.2f} s"
-        print(f"{modelo}: tempo médio {media} em {medida['ok']} respostas")
+        medida = tempo_medio(modelo, lote, rodadas=RODADAS)
+        print(f"{modelo}: {RODADAS} rodadas de {len(lote)} perguntas (aquecimento não contado)")
+        for n, tempos in enumerate(medida["rodadas"], 1):
+            est = estatisticas(tempos)
+            texto = "sem medida" if est is None else f"média {est[0]:.2f} s, mínimo {est[1]:.2f} s, máximo {est[2]:.2f} s"
+            print(f"  rodada {n}: {texto} ({len(tempos)} respostas)")
+        est = estatisticas(medida.get("todos", []))
+        texto = "sem medida" if est is None else f"média {est[0]:.2f} s, mínimo {est[1]:.2f} s, máximo {est[2]:.2f} s"
+        print(f"  total: {texto} ({medida['ok']} respostas)")
         for erro in medida["erros"]:
             print("  erro:", erro)
-
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):

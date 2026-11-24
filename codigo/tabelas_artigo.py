@@ -35,9 +35,9 @@ def ollama_no_ar():
         return False
 
 
-def tabela_guarda_15(corpus):
-    """Tabela 1: decisão esperada e obtida da guarda nas 15 perguntas do CSV, com a acurácia."""
-    linhas = comparacao.ler_csv(RAIZ / "perguntas_avaliacao.csv")
+def tabela_guarda_15(corpus, arquivo="perguntas_avaliacao.csv"):
+    """Tabela 1: decisão esperada e obtida da guarda nas perguntas do CSV, com a acurácia."""
+    linhas = comparacao.ler_csv(RAIZ / arquivo)
     esperadas, obtidas = [], []
     print(f"{'#':>2} {'Pergunta':58} {'Esperado':17} Obtido")
     for i, l in enumerate(linhas, 1):
@@ -82,9 +82,11 @@ def principal():
     corpus = carregar_corpus(RAIZ / "corpus")
     titulo("Tabela 1. Guarda: decisão esperada e obtida nas 15 perguntas")
     linhas = tabela_guarda_15(corpus)
+    titulo("Tabela 1b. Guarda: decisão esperada e obtida nas perguntas novas (perguntas_novas.csv)")
+    tabela_guarda_15(corpus, "perguntas_novas.csv")
     titulo("Tabela 2. Guarda: 10 casos do grupo, sem e com incerteza e sem a rede")
     avaliacao.principal()
-    titulo("Tabela 3. Busca: acerto@3 de TF-IDF e embeddings e calibração do limiar")
+    titulo("Tabela 3. Busca: acerto@3 de TF-IDF e embeddings, calibração do limiar e perguntas novas")
     comparacao.principal()
     if not ollama_no_ar():
         print("\nOllama não responde em localhost:11434: tabelas 4 a 7 puladas (inicie o Ollama e rode de novo).")
@@ -99,7 +101,40 @@ def principal():
     auditoria.principal()
 
 
+def gerar_respostas_para_marcar(caminho):
+    """Grava o CSV para marcação manual: todas as perguntas liberadas pela guarda (15 + novas) em cada modelo,
+    mais as perguntas sem documentos para o modelo menor."""
+    corpus = carregar_corpus(RAIZ / "corpus")
+    perguntas = [l["pergunta"] for arq in ("perguntas_avaliacao.csv", "perguntas_novas.csv")
+                 for l in comparacao.ler_csv(RAIZ / arq)]
+    liberadas = []
+    for p in perguntas:
+        r = tratar_pergunta(p, corpus)
+        if r["acao_com_incerteza"] == "responder":
+            liberadas.append((p, [(i, corpus[i]) for i, _ in r["documentos"]]))
+    print(f"{len(liberadas)} perguntas liberadas pela guarda, de {len(perguntas)}")
+    linhas = []
+    for modelo in modelos.MODELOS:
+        for p, docs in liberadas:
+            r = modelos.responder(modelo, p, docs)
+            linhas.append([modelo, p, " ".join(i for i, _ in docs), r["erro"] and f"[ERRO] {r['erro']}" or r["texto"], "", ""])
+            print(f"  {modelo} | {p[:50]} | {r['segundos']:.1f} s | {'ERRO ' + r['erro'] if r['erro'] else len(r['texto'])}")
+    menor = modelos.MODELOS[0]
+    for p in PERGUNTAS_SEM_DOCUMENTOS:
+        r = modelos.chamar_ollama(menor, f"Pergunta: {p}")
+        linhas.append([menor, p, "(nenhum)", r["erro"] and f"[ERRO] {r['erro']}" or r["texto"], "", ""])
+        print(f"  {menor} | {p[:50]} | sem documentos | {'ERRO ' + r['erro'] if r['erro'] else len(r['texto'])}")
+    with open(caminho, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["modelo", "pergunta", "documentos_usados", "resposta", "marcacao", "observacao"])
+        w.writerows(linhas)
+    print(f"{len(linhas)} linhas gravadas em {caminho}")
+
+
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    principal()
+    if "--marcar" in sys.argv:
+        gerar_respostas_para_marcar(RAIZ / "saidas" / "respostas_para_marcar_v2.csv")
+    else:
+        principal()
