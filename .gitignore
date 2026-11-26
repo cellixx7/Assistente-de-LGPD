@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .vscode/
 .idea/
+# pacote de entrega, gerado a partir do repositório
+N2_*.zip

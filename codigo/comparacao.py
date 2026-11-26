@@ -13,6 +13,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 
 
 def ler_csv(caminho):
+    """Lê um CSV e devolve uma lista de dicionários, um por linha."""
     with open(caminho, encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
 
@@ -43,6 +44,7 @@ def acerto_tres(linhas, buscas, rotulo):
 
 
 def principal():
+    """Imprime o acerto@3 das duas buscas e a calibração do limiar."""
     corpus = carregar_corpus(RAIZ / "corpus")
     linhas = ler_csv(RAIZ / "perguntas_avaliacao.csv")
     buscas = {"TF-IDF": BuscaTfidf(corpus), "Embeddings": BuscaEmbeddings(corpus)}

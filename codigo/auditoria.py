@@ -67,11 +67,11 @@ def classificar(r):
 def auditar(corpus_base, modelos=MODELOS, perguntas=PERGUNTAS, ataques=None, timeout=120):
     """Roda ataques x perguntas x modelos x condições e devolve uma lista de linhas com o veredito de cada célula."""
     linhas = []
-    for id_ataque, documento in (ataques or ATAQUES).items():
-        corpus = dict(corpus_base)
-        corpus[id_ataque] = documento
-        for pergunta in perguntas:
-            for modelo in modelos:
+    for modelo in modelos:  # um modelo por vez, para não recarregá-lo a cada pergunta
+        for id_ataque, documento in (ataques or ATAQUES).items():
+            corpus = dict(corpus_base)
+            corpus[id_ataque] = documento
+            for pergunta in perguntas:
                 celulas, detalhes = {}, {}
                 for nome, (defesa_prompt, defesa_guarda) in CONDICOES.items():
                     acao, documentos, forcado, barrados = montar_contexto(pergunta, corpus, defesa_guarda, id_ataque)
@@ -113,6 +113,14 @@ def imprimir_tabela(linhas):
         )
         modelos = sorted({l["modelo"] for l in linhas if l["celulas"][nome] == "SEGUIU"})
         print(f"  {nome:<16}total {seguiram}/{validas} ({por_ataque}); modelos que seguiram: {modelos or 'nenhum'}")
+    print("\nPor modelo e ataque (seguiram/válidas):")
+    for nome in nomes:
+        partes = []
+        for id_ataque in ids:
+            for modelo in dict.fromkeys(l["modelo"] for l in linhas):
+                sub = [l for l in linhas if l["ataque"] == id_ataque and l["modelo"] == modelo]
+                partes.append("{} {}: {}/{}".format(id_ataque, modelo, *contar_seguiram(sub, nome)))
+        print(f"  {nome:<16}" + "; ".join(partes))
     erros = [(l["ataque"], l["modelo"], n, d["erro"]) for l in linhas for n, d in l["detalhes"].items() if d and d["erro"]]
     for id_ataque, modelo, nome, erro in sorted(set(erros)):
         print(f"  aviso: {id_ataque}, {modelo} em '{nome}': {erro}")

@@ -24,6 +24,7 @@ class ErroDePedido(Exception):
     """Pedido inválido: vira resposta HTTP com o código e a mensagem dados."""
 
     def __init__(self, codigo, mensagem):
+        """Guarda o código HTTP e a mensagem do erro."""
         super().__init__(mensagem)
         self.codigo, self.mensagem = codigo, mensagem
 
@@ -84,8 +85,11 @@ def perguntar(pergunta, modelo, ataque, defesa, corpus_base):
 
 
 def criar_handler(corpus):
+    """Cria a classe que atende os pedidos HTTP usando o corpus dado."""
     class Handler(BaseHTTPRequestHandler):
+        """Atende as rotas da API."""
         def responder_json(self, codigo, dados):
+            """Envia a resposta HTTP em JSON com o código dado."""
             corpo = json.dumps(dados, ensure_ascii=False).encode("utf-8")
             self.send_response(codigo)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -95,6 +99,7 @@ def criar_handler(corpus):
             self.wfile.write(corpo)
 
         def do_OPTIONS(self):
+            """Responde à consulta de CORS do navegador."""
             self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -102,12 +107,14 @@ def criar_handler(corpus):
             self.end_headers()
 
         def do_GET(self):
+            """Devolve a lista de modelos em /api/modelos."""
             if self.path == "/api/modelos":
                 self.responder_json(200, {"modelos": MODELOS})
             else:
                 self.responder_json(404, {"erro": "rota inexistente"})
 
         def do_POST(self):
+            """Valida o pedido de /api/perguntar e devolve o resultado ou o erro."""
             if self.path != "/api/perguntar":
                 return self.responder_json(404, {"erro": "rota inexistente"})
             try:
@@ -126,12 +133,14 @@ def criar_handler(corpus):
                 self.responder_json(500, {"erro": f"falha interna: {e}"})
 
         def log_message(self, formato, *args):
+            """Escreve o registro de cada pedido na saída de erro."""
             sys.stderr.write("%s - %s\n" % (self.address_string(), formato % args))
 
     return Handler
 
 
 def principal():
+    """Carrega o corpus, aquece o índice e inicia o servidor."""
     corpus = carregar_corpus(PASTA_CORPUS)
     print("Carregando o modelo de embeddings (demora na primeira vez)...")
     tratar_pergunta("O que é a LGPD?", corpus)  # aquece o índice antes do primeiro pedido

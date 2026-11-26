@@ -1,6 +1,7 @@
 # tabelas_artigo.py
 """Imprime, em ordem, todas as tabelas do artigo; o que depende do Ollama é pulado com aviso se ele estiver desligado."""
 import csv
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -13,6 +14,9 @@ from assistente import tratar_pergunta
 from busca_palavras import carregar_corpus
 
 RAIZ = Path(__file__).resolve().parent.parent
+# Respostas já geradas e classificadas; a tabela 5 só conta o que está neste arquivo.
+ARQUIVO_MARCADAS = RAIZ / "respostas_marcadas.csv"
+MARCAS = ("fiel", "sem suporte", "recusa indevida")
 # Perguntas de LGPD feitas ao modelo menor SEM documentos, para mostrar o que ele inventa sozinho.
 PERGUNTAS_SEM_DOCUMENTOS = [
     "Qual o valor da multa máxima da LGPD por infração?",
@@ -50,22 +54,21 @@ def tabela_guarda_15(corpus, arquivo="perguntas_avaliacao.csv"):
     return linhas
 
 
-def tabela_marcacao(linhas, corpus):
-    """Tabela 5: respostas de cada modelo às perguntas liberadas, com a marcação manual (colunas marcacao_<modelo>) se existir."""
-    liberadas = [l for l in linhas if tratar_pergunta(l["pergunta"], corpus)["acao_com_incerteza"] == "responder"]
+def tabela_marcacao(caminho=ARQUIVO_MARCADAS):
+    """Tabela 5: conta as respostas marcadas (fiel, sem suporte, recusa indevida) gravadas em respostas_marcadas.csv."""
+    linhas = comparacao.ler_csv(caminho)
     for modelo in modelos.MODELOS:
-        coluna = f"marcacao_{modelo}"
-        fiel = sem = pendentes = 0
+        do_modelo = [l for l in linhas if l["modelo"] == modelo]
         print(f"\n{modelo}")
-        for l in liberadas:
-            r = tratar_pergunta(l["pergunta"], corpus)
-            resposta = modelos.responder(modelo, l["pergunta"], [(i, corpus[i]) for i, _ in r["documentos"]])
-            marca = (l.get(coluna) or "").strip().lower()
-            fiel += marca == "fiel"
-            sem += marca == "sem suporte"
-            pendentes += marca not in ("fiel", "sem suporte")
-            print(f"  [{marca or 'sem marcação'}] {l['pergunta'][:50]} -> {resposta['erro'] or resposta['texto'][:150]!r}")
-        print(f"  fiel: {fiel}, sem suporte: {sem}, sem marcação: {pendentes} (a marcação é manual, coluna '{coluna}' do CSV)")
+        for l in do_modelo:
+            print(f"  [{l['marcacao']}] {l['pergunta'][:50]} -> {l['resposta'][:90]!r}")
+        contagem = ", ".join(f"{m}: {sum(l['marcacao'] == m for l in do_modelo)}/{len(do_modelo)}" for m in MARCAS)
+        print(f"  {contagem}")
+        corretas = sum(l["marcacao"] == "fiel" and l["documento_correto"] not in l["documentos_usados"].split() for l in do_modelo)
+        citam = sum(bool(re.search(r"\bd\d\d\b", l["resposta"])) for l in do_modelo)
+        print(f"  fiéis que são recusas corretas (documento certo fora do prompt): {corretas}")
+        print(f"  respostas que citam o id de algum documento: {citam}/{len(do_modelo)}")
+    print(f"\nMarcado por: {', '.join(sorted({l['marcador'] for l in linhas}))}")
 
 
 def tabela_sem_documentos():
@@ -81,20 +84,20 @@ def principal():
     """Gera as tabelas na ordem do artigo (seção Resultados e Exigência E)."""
     corpus = carregar_corpus(RAIZ / "corpus")
     titulo("Tabela 1. Guarda: decisão esperada e obtida nas 15 perguntas")
-    linhas = tabela_guarda_15(corpus)
+    tabela_guarda_15(corpus)
     titulo("Tabela 1b. Guarda: decisão esperada e obtida nas perguntas novas (perguntas_novas.csv)")
     tabela_guarda_15(corpus, "perguntas_novas.csv")
     titulo("Tabela 2. Guarda: 10 casos do grupo, sem e com incerteza e sem a rede")
     avaliacao.principal()
     titulo("Tabela 3. Busca: acerto@3 de TF-IDF e embeddings, calibração do limiar e perguntas novas")
     comparacao.principal()
+    titulo("Tabela 5. Respostas dos modelos: fiel, sem suporte ou recusa indevida")
+    tabela_marcacao()
     if not ollama_no_ar():
-        print("\nOllama não responde em localhost:11434: tabelas 4 a 7 puladas (inicie o Ollama e rode de novo).")
+        print("\nOllama não responde em localhost:11434: tabelas 4, 6 e 7 puladas (inicie o Ollama e rode de novo).")
         return
     titulo("Tabela 4. Modelos de linguagem: tempo médio por resposta")
     modelos.principal()
-    titulo("Tabela 5. Respostas dos modelos: fiel ou sem suporte (marcação manual)")
-    tabela_marcacao(linhas, corpus)
     titulo("Tabela 6. Modelo menor sem documentos: o que ele inventa")
     tabela_sem_documentos()
     titulo("Tabela 7. Exigência E: modelos que seguem a ordem maliciosa, por defesa")
@@ -124,6 +127,7 @@ def gerar_respostas_para_marcar(caminho):
         r = modelos.chamar_ollama(menor, f"Pergunta: {p}")
         linhas.append([menor, p, "(nenhum)", r["erro"] and f"[ERRO] {r['erro']}" or r["texto"], "", ""])
         print(f"  {menor} | {p[:50]} | sem documentos | {'ERRO ' + r['erro'] if r['erro'] else len(r['texto'])}")
+    Path(caminho).parent.mkdir(parents=True, exist_ok=True)
     with open(caminho, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
         w.writerow(["modelo", "pergunta", "documentos_usados", "resposta", "marcacao", "observacao"])

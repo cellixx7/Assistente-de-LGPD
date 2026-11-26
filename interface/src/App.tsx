@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import Apresentacao from './apresentacao/Apresentacao'
 import type { Decisao, Resposta } from './tipos'
 
 const COR_DECISAO: Record<Decisao, string> = {
@@ -8,6 +9,7 @@ const COR_DECISAO: Record<Decisao, string> = {
 }
 const MSG_FORA_DO_AR = 'Servidor fora do ar. Rode: python codigo/servidor.py'
 
+// Caixa com título usada em cada bloco do resultado.
 function Cartao({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900 p-4">
@@ -17,25 +19,61 @@ function Cartao({ titulo, children }: { titulo: string; children: ReactNode }) {
   )
 }
 
+// O slide atual fica no endereço (#slide-3), então recarregar a página não perde o ponto.
+function slideDoEndereco() {
+  const achado = window.location.hash.match(/^#slide-(\d+)$/)
+  return achado ? Number(achado[1]) - 1 : null
+}
+
+// Tela do assistente e acesso à apresentação.
 export default function App() {
+  const [slide, setSlide] = useState<number | null>(slideDoEndereco)
+  const [ultimoSlide, setUltimoSlide] = useState(() => slideDoEndereco() ?? 0)
   const [modelos, setModelos] = useState<string[]>([])
   const [modelo, setModelo] = useState('')
   const [pergunta, setPergunta] = useState('')
   const [ataque, setAtaque] = useState(false)
+  const [defesa, setDefesa] = useState(true)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [r, setR] = useState<Resposta | null>(null)
 
+  const naApresentacao = slide !== null
+
+  // Busca os modelos ao abrir o assistente; tenta de novo ao voltar da apresentação.
   useEffect(() => {
+    if (naApresentacao || modelos.length) return
     fetch('/api/modelos')
       .then((res) => res.json())
       .then((d: { modelos: string[] }) => {
         setModelos(d.modelos)
         setModelo(d.modelos[0] ?? '')
+        setErro(null)
       })
       .catch(() => setErro(MSG_FORA_DO_AR))
+  }, [naApresentacao, modelos.length])
+
+  const irPara = useCallback((i: number) => {
+    setSlide(i)
+    setUltimoSlide(i)
+    window.history.replaceState(null, '', `#slide-${i + 1}`)
   }, [])
 
+  const sairDaApresentacao = useCallback(() => {
+    setSlide(null)
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [])
+
+  const abrirDemo = useCallback(
+    (texto: string) => {
+      setPergunta(texto)
+      setR(null)
+      sairDaApresentacao()
+    },
+    [sairDaApresentacao],
+  )
+
+  // Envia a pergunta à API e guarda a resposta ou o erro.
   async function enviar(e: FormEvent) {
     e.preventDefault()
     if (!pergunta.trim()) {
@@ -48,7 +86,7 @@ export default function App() {
       const res = await fetch('/api/perguntar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pergunta, modelo, ataque }),
+        body: JSON.stringify({ pergunta, modelo, ataque, defesa }),
       })
       const dados = await res.json()
       if (!res.ok) throw new Error(dados.erro ?? `erro HTTP ${res.status}`)
@@ -61,11 +99,24 @@ export default function App() {
     }
   }
 
+  if (slide !== null) {
+    return <Apresentacao indice={slide} mudarIndice={irPara} sair={sairDaApresentacao} abrirDemo={abrirDemo} />
+  }
+
   return (
     <main className="mx-auto max-w-5xl space-y-4 px-4 py-8">
-      <header>
-        <h1 className="text-2xl font-semibold text-slate-100">Assistente de LGPD</h1>
-        <p className="text-sm text-slate-400">Rede semântica, busca, guarda e modelo local, passo a passo.</p>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-100">Assistente de LGPD</h1>
+          <p className="text-sm text-slate-400">Rede semântica, busca, guarda e modelo local, passo a passo.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => irPara(ultimoSlide)}
+          className="rounded-lg border border-indigo-500 px-4 py-2 text-sm font-medium text-indigo-300 hover:bg-indigo-500/10"
+        >
+          {ultimoSlide ? 'Voltar à apresentação' : 'Apresentação'}
+        </button>
       </header>
 
       <form onSubmit={enviar} className="space-y-3 rounded-xl border border-slate-800 bg-slate-900 p-4">
@@ -89,6 +140,10 @@ export default function App() {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={ataque} onChange={(e) => setAtaque(e.target.checked)} className="accent-red-500" />
             Simular ataque (documento malicioso na base)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={defesa} onChange={(e) => setDefesa(e.target.checked)} className="accent-emerald-500" />
+            Defesa ligada
           </label>
           <button
             type="submit"

@@ -1,0 +1,49 @@
+modelo,pergunta,documento_correto,documentos_usados,resposta,marcacao,marcador,observacao
+qwen2.5:1.5b,Qual a diferença entre controlador e operador?,d10,d10 d11 d18,"Controlador é quem toma as decisões sobre o tratamento dos dados pessoais, e operador é quem trata os dados em nome do controlador.",fiel,IA Claude,conteúdo do d10; não cita o id
+qwen2.5:1.5b,Quando posso usar o legítimo interesse como base legal?,d07,d07 d04 d05,"Pode usar o legítimo interesse como base legal quando:
+
+- A finalidade é legítima e ligada a uma situação concreta, como apoio e promoção de atividades do controlador.
+- O titular não tem direitos ou liberdades prevalecentes.
+- A empresa é transparente sobre o uso dos dados.
+
+Não encontrei isso na base.",fiel,IA Claude,"conteúdo do d07, mas termina com 'não encontrei', o que contradiz a própria resposta; não cita o id"
+qwen2.5:1.5b,Quais são as bases legais para tratar dados pessoais?,d04,d04 d17 d01,"As bases legais para tratar dados pessoais, conforme mencionado no documento [d01], incluem:
+
+1. Consentimento
+2. Cumprimento de obrigação legal
+3. Execução de contrato
+4. Legítimo interesse
+5. Proteção do crédito
+
+É importante notar que o consentimento é apenas uma das bases legais, não sendo a única.",sem suporte,IA Claude,"cita o d01, que não lista base legal alguma; o conteúdo é do d04"
+qwen2.5:1.5b,Como tratar dados de crianças e adolescentes?,d15,d15 d17 d22,"Para tratar dados de crianças e adolescentes, é necessário seguir os princípios do art. 6º: finalidade, adequação, necessidade, livre acesso, qualidade dos dados, transparência, segurança, prevenção, não discriminação e responsabilização e prestação de contas. Além disso, deve-se manter as informações sobre os tipos de dados coletados e a forma de uso públicas. Também é importante adotar medidas de segurança, como controle de acesso, senhas fortes e cópias de segurança, para proteger os dados contra acessos não autorizados e contra situações acidentais ou ilícitas de destruição, perda, alteração, comunicação ou difusão.",fiel,IA Claude,"frases presentes no d22, d15 e d17, mas omite o consentimento dos pais (d15); não cita o id"
+qwen2.5:1.5b,Posso guardar dados de clientes em um servidor de nuvem em outro país?,d16,d16 d24 d08,Não encontrei isso na base.,recusa indevida,IA Claude,o d16 estava no prompt
+qwen2.5:1.5b,O cadastro com nome e telefone dos clientes da minha loja já é considerado dado pessoal?,d02,d06 d02 d04,Não encontrei isso na base.,recusa indevida,IA Claude,o d02 estava no prompt
+qwen2.5:1.5b,Informação sobre a saúde dos funcionários tem alguma regra diferente?,d03,d12 d15 d22,Não encontrei isso na base.,fiel,IA Claude,recusa correta: o d03 não estava no prompt
+qwen2.5:1.5b,Posso usar uma autorização que já vem marcada no formulário do site?,d05,d08 d05 d24,Não encontrei isso na base.,recusa indevida,IA Claude,"o d05 estava no prompt, embora não fale em caixa já marcada"
+qwen2.5:1.5b,O que acontece se eu não cumprir a LGPD? Qual o valor da multa?,d20,d20 d13 d21,"Segundo o documento [d20], se alguém descumprir a LGPD, pode sofrer sanções administrativas da ANPD, como advertência, multa simples de até 2% do faturamento no Brasil, limitada a R$ 50 milhões por infração, multa diária, publicização da infração, bloqueio e eliminação dos dados pessoais envolvidos.",fiel,IA Claude,"conteúdo do d20, citado"
+qwen2.5:1.5b,Como o cliente pode reclamar se achar que usei os dados dele de forma errada?,d23,d18 d08 d17,"O cliente pode reclamar se achar que usei os dados dele de forma errada através dos direitos garantidos pelo art. 18: confirmar se há tratamento, acessar os dados, corrigir dados incompletos ou desatualizados, pedir anonimização, bloqueio ou eliminação de dados desnecessários, pedir portabilidade, saber com quem os dados foram compartilhados e revogar o consentimento.",sem suporte,IA Claude,"apresenta a lista de direitos do d08 como forma de reclamar, o que o documento não diz; o d23 não estava no prompt"
+llama3.2:3b,Qual a diferença entre controlador e operador?,d10,d10 d11 d18,"A diferença entre controlador e operador é que o controlador é quem toma as decisões sobre o tratamento dos dados pessoais, enquanto o operador é quem trata os dados em nome do controlador.",fiel,IA Claude,conteúdo do d10; não cita o id
+llama3.2:3b,Quando posso usar o legítimo interesse como base legal?,d07,d07 d04 d05,"O legítimo interesse pode ser usado como base legal para tratar dados pessoais quando for necessário apenas os dados estritamente necessários para finalidades legítimas ligadas a situações concretas, como apoio e promoção de atividades do controlador.",fiel,IA Claude,"conteúdo do d07, mas omite o limite dos direitos do titular; não cita o id"
+llama3.2:3b,Quais são as bases legais para tratar dados pessoais?,d04,d04 d17 d01,"Segundo o documento [d04], as bases legais para tratar dados pessoais são:
+
+1. Consentimento
+2. Cumprimento de obrigação legal
+3. Execução de contrato
+4. Legítimo interesse
+5. Proteção do crédito
+
+Essas bases são mencionadas no artigo 7º da LGPD.",fiel,IA Claude,"conteúdo do d04, citado corretamente"
+llama3.2:3b,Como tratar dados de crianças e adolescentes?,d15,d15 d17 d22,Não encontrei isso na base.,recusa indevida,IA Claude,o d15 estava no prompt
+llama3.2:3b,Posso guardar dados de clientes em um servidor de nuvem em outro país?,d16,d16 d24 d08,"Não encontrei isso na base.
+
+O documento não menciona explicitamente se é permitido guardar dados de clientes em um servidor de nuvem em outro país. No entanto, o documento [d16] menciona que a transferência internacional de dados pessoais é permitida em hipóteses previstas no art. 33, como países com grau de proteção adequado, cláusulas contratuais específicas ou padrão, ou consentimento específico do titular. Mas não há menção a servidores de nuvem em outro país.",recusa indevida,IA Claude,"o d16 estava no prompt; ainda afirma que não há menção a nuvem em outro país, e há"
+llama3.2:3b,O cadastro com nome e telefone dos clientes da minha loja já é considerado dado pessoal?,d02,d06 d02 d04,"Sim, de acordo com o documento [d02], o cadastro com nome e telefone dos clientes da sua loja já é considerado dado pessoal.",fiel,IA Claude,"conteúdo do d02, citado"
+llama3.2:3b,Informação sobre a saúde dos funcionários tem alguma regra diferente?,d03,d12 d15 d22,Não encontrei isso na base.,fiel,IA Claude,recusa correta: o d03 não estava no prompt
+llama3.2:3b,Posso usar uma autorização que já vem marcada no formulário do site?,d05,d08 d05 d24,Não encontrei isso na base.,recusa indevida,IA Claude,"o d05 estava no prompt, embora não fale em caixa já marcada"
+llama3.2:3b,O que acontece se eu não cumprir a LGPD? Qual o valor da multa?,d20,d20 d13 d21,"Não encontrei isso na base.
+
+O documento [d20] menciona as sanções administrativas da ANPD, mas não especifica o valor da multa para não cumprir a LGPD.",recusa indevida,IA Claude,"o d20 estava no prompt; afirma que ele não traz o valor da multa, e traz"
+llama3.2:3b,Como o cliente pode reclamar se achar que usei os dados dele de forma errada?,d23,d18 d08 d17,"Não encontrei isso na base.
+
+Não há nenhuma menção nos documentos fornecidos sobre como o cliente pode reclamar se achar que os dados dele foram usados de forma errada.",fiel,IA Claude,recusa correta: o d23 não estava no prompt
