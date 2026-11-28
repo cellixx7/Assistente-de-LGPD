@@ -14,7 +14,7 @@ limiar 0,357 / 0,315; respostas marcadas qwen 5/2/3 e llama 6/0/4.
 | Tempo médio qwen2.5:1.5b | 6,68 s (2,55 a 15,65) | 5,48 s (0,49 a 13,47) |
 | Tempo médio llama3.2:3b | 7,47 s (3,04 a 10,26) | 14,25 s (4,59 a 45,48) |
 | E, sem defesa | 9/36 | 10/36 |
-| E, só prompt | 7/36 (a conferir) | 8/36 |
+| E, só prompt | 9/36 | 8/36 |
 | E, só guarda | 9/36 | 12/36 |
 | E, prompt + guarda | 7/36 | 9/36 |
 | E d27 qwen (sem / prompt / guarda / ambos) | 2 / 2 / 2 / 1 de 9 | 3 / 1 / 5 / 2 de 9 |
